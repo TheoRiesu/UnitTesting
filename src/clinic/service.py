@@ -1,118 +1,74 @@
-"""Application service: owner / pet / appointment use cases."""
-from datetime import datetime
-from typing import List
-
+# Simple service with all clinic actions.
 from .database import ClinicDatabase
 from .factory import PetFactory
-from .models import Appointment, AppointmentStatus, Owner, Pet
-
-DATETIME_FORMAT = "%Y-%m-%d %H:%M"
+from .models import Owner, Appointment
 
 
 class ClinicService:
-    """Orchestrates ClinicDatabase + PetFactory with business rules."""
+    def __init__(self):
+        self.db = ClinicDatabase.get_instance()
+        self.owner_count = 0
+        self.pet_count = 0
+        self.appointment_count = 0
 
-    def __init__(self, db: ClinicDatabase | None = None) -> None:
-        self.db = db or ClinicDatabase.get_instance()
-        self._owner_seq = 0
-        self._pet_seq = 0
-        self._appointment_seq = 0
-
-    # -- Pet Owner Management --
-    def register_owner(self, name: str, contact_number: str) -> Owner:
-        if not name or not name.strip():
-            raise ValueError("owner name must not be empty")
-        if not contact_number or not contact_number.strip():
-            raise ValueError("contact number must not be empty")
-        for existing in self.db.list_owners():
-            if existing.contact_number == contact_number.strip():
-                raise ValueError(f"contact number '{contact_number}' already registered")
-        self._owner_seq += 1
-        owner = Owner(
-            owner_id=f"O{self._owner_seq:03d}",
-            name=name.strip(),
-            contact_number=contact_number.strip(),
-        )
-        self.db.add_owner(owner)
+    # 1. Pet Owner Management
+    def register_owner(self, name, contact_number):
+        if name.strip() == "":
+            raise ValueError("Name cannot be empty")
+        if contact_number.strip() == "":
+            raise ValueError("Contact cannot be empty")
+        self.owner_count += 1
+        owner_id = "O" + str(self.owner_count).zfill(3)
+        owner = Owner(owner_id, name, contact_number)
+        self.db.owners[owner_id] = owner
         return owner
 
-    def view_owners(self) -> List[Owner]:
-        return self.db.list_owners()
+    def view_owners(self):
+        return list(self.db.owners.values())
 
-    # -- Pet Management --
-    def add_pet(self, name: str, pet_type: str, owner_id: str, age: int = 0) -> Pet:
-        if self.db.get_owner(owner_id) is None:
-            raise ValueError(f"owner_id '{owner_id}' not found")
-        self._pet_seq += 1
-        pet = PetFactory.create_pet(
-            pet_type=pet_type,
-            pet_id=f"P{self._pet_seq:03d}",
-            name=name.strip(),
-            owner_id=owner_id,
-            age=age,
-        )
-        self.db.add_pet(pet)
+    # 2. Pet Management
+    def add_pet(self, name, pet_type, owner_id, age=0):
+        if owner_id not in self.db.owners:
+            raise ValueError("Owner not found: " + owner_id)
+        self.pet_count += 1
+        pet_id = "P" + str(self.pet_count).zfill(3)
+        pet = PetFactory.create_pet(pet_type, pet_id, name, owner_id, age)
+        self.db.pets[pet_id] = pet
         return pet
 
-    def view_pets(self, owner_id: str | None = None) -> List[Pet]:
-        if owner_id:
-            return self.db.list_pets_by_owner(owner_id)
-        return self.db.list_pets()
+    def view_pets(self):
+        return list(self.db.pets.values())
 
-    # -- Appointment Management --
-    @staticmethod
-    def parse_datetime(value: str) -> datetime:
-        try:
-            return datetime.strptime(value.strip(), DATETIME_FORMAT)
-        except ValueError as exc:
-            raise ValueError(f"Use format YYYY-MM-DD HH:MM (e.g. 2026-09-20 10:00)") from exc
-
-    def schedule_appointment(self, pet_id: str, date_time_str: str, reason: str = "") -> Appointment:
-        pet = self.db.get_pet(pet_id)
-        if pet is None:
-            raise ValueError(f"pet_id '{pet_id}' not found")
-        date_time = self.parse_datetime(date_time_str)
-        # Prevent scheduling conflicts: same pet, same slot, still active.
-        for appt in self.db.list_appointments():
-            if (
-                appt.pet_id == pet_id
-                and appt.date_time == date_time
-                and appt.status == AppointmentStatus.SCHEDULED
-            ):
-                raise ValueError(f"pet '{pet_id}' already has an active appointment at {date_time_str}")
-        self._appointment_seq += 1
-        appointment = Appointment(
-            appointment_id=f"A{self._appointment_seq:03d}",
-            pet_id=pet_id,
-            owner_id=pet.owner_id,
-            date_time=date_time,
-            reason=reason.strip(),
-            status=AppointmentStatus.SCHEDULED,
-        )
-        self.db.add_appointment(appointment)
-        return appointment
-
-    def view_appointments(self) -> List[Appointment]:
-        return sorted(self.db.list_appointments(), key=lambda a: a.date_time)
-
-    def cancel_appointment(self, appointment_id: str) -> Appointment:
-        appt = self.db.get_appointment(appointment_id)
-        if appt is None:
-            raise ValueError(f"appointment_id '{appointment_id}' not found")
-        if appt.status == AppointmentStatus.CANCELLED:
-            raise ValueError(f"appointment '{appointment_id}' is already cancelled")
-        if appt.status == AppointmentStatus.COMPLETED:
-            raise ValueError(f"completed appointment '{appointment_id}' cannot be cancelled")
-        appt.status = AppointmentStatus.CANCELLED
+    # 3. Appointment Management
+    def schedule_appointment(self, pet_id, date_time, reason=""):
+        if pet_id not in self.db.pets:
+            raise ValueError("Pet not found: " + pet_id)
+        # Avoid double booking same pet + same time
+        for a in self.db.appointments.values():
+            if a.pet_id == pet_id and a.date_time == date_time and a.status == "Scheduled":
+                raise ValueError("Pet already booked at that time")
+        self.appointment_count += 1
+        appointment_id = "A" + str(self.appointment_count).zfill(3)
+        pet = self.db.pets[pet_id]
+        appt = Appointment(appointment_id, pet_id, pet.owner_id, date_time, reason)
+        self.db.appointments[appointment_id] = appt
         return appt
 
-    def update_appointment_status(self, appointment_id: str, status: str) -> Appointment:
-        appt = self.db.get_appointment(appointment_id)
-        if appt is None:
-            raise ValueError(f"appointment_id '{appointment_id}' not found")
-        try:
-            appt.status = AppointmentStatus(status)
-        except ValueError as exc:
-            valid = ", ".join(s.value for s in AppointmentStatus)
-            raise ValueError(f"Invalid status '{status}'. Use: {valid}") from exc
+    def view_appointments(self):
+        return list(self.db.appointments.values())
+
+    def cancel_appointment(self, appointment_id):
+        if appointment_id not in self.db.appointments:
+            raise ValueError("Appointment not found")
+        appt = self.db.appointments[appointment_id]
+        appt.status = "Cancelled"
+        return appt
+
+    def update_status(self, appointment_id, status):
+        if status not in ["Scheduled", "Completed", "Cancelled"]:
+            raise ValueError("Bad status: " + status)
+        if appointment_id not in self.db.appointments:
+            raise ValueError("Appointment not found")
+        appt = self.db.appointments[appointment_id]
+        appt.status = status
         return appt

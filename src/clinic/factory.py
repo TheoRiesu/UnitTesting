@@ -1,44 +1,18 @@
-"""Factory Pattern for creating pets."""
-from .models import Bird, Cat, Dog, Pet, Rabbit
+# Factory: creates the right pet object by type name.
+from .models import Dog, Cat, Bird, Rabbit
 
 
 class PetFactory:
-    """Create pet objects from a type string.
-
-    Supported types: Dog, Cat, Bird, Rabbit (case-insensitive).
-    """
-
-    SUPPORTED_TYPES = ("Dog", "Cat", "Bird", "Rabbit")
-
-    _TYPE_MAP = {
-        "dog": Dog,
-        "cat": Cat,
-        "bird": Bird,
-        "rabbit": Rabbit,
-    }
-
-    @classmethod
-    def create_pet(
-        cls,
-        pet_type: str,
-        pet_id: str,
-        name: str,
-        owner_id: str,
-        age: int = 0,
-    ) -> Pet:
-        """Create and return a Pet subclass instance.
-
-        Raises:
-            ValueError: if pet_type is not one of the supported types.
-        """
-        key = (pet_type or "").strip().lower()
-        pet_class = cls._TYPE_MAP.get(key)
-        if pet_class is None:
-            raise ValueError(
-                f"Unknown pet type '{pet_type}'. Supported: {', '.join(cls.SUPPORTED_TYPES)}"
-            )
-        return pet_class(pet_id=pet_id, name=name, owner_id=owner_id, age=age)
-
-    @classmethod
-    def supported_types(cls) -> tuple:
-        return cls.SUPPORTED_TYPES
+    @staticmethod
+    def create_pet(pet_type, pet_id, name, owner_id, age=0):
+        pet_type = pet_type.lower()
+        if pet_type == "dog":
+            return Dog(pet_id, name, owner_id, age)
+        elif pet_type == "cat":
+            return Cat(pet_id, name, owner_id, age)
+        elif pet_type == "bird":
+            return Bird(pet_id, name, owner_id, age)
+        elif pet_type == "rabbit":
+            return Rabbit(pet_id, name, owner_id, age)
+        else:
+            raise ValueError("Unknown pet type: " + pet_type)
