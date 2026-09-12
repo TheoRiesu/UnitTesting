@@ -17,38 +17,38 @@ def main():
         print("7. Cancel appointment")
         print("8. Update status")
         print("0. Exit")
-        choice = input("Choice: ")
+        choice = input("Choice: ").strip()
 
         try:
             if choice == "1":
-                name = input("Name: ")
-                contact = input("Contact: ")
+                name = input("Name: ").strip()
+                contact = input("Contact: ").strip()
                 print("Registered:", service.register_owner(name, contact))
             elif choice == "2":
                 for o in service.view_owners():
                     print(o)
             elif choice == "3":
-                name = input("Pet name: ")
-                ptype = input("Type (Dog/Cat/Bird/Rabbit): ")
-                owner_id = input("Owner ID (e.g. O001): ")
+                name = input("Pet name: ").strip()
+                ptype = input("Type (Dog/Cat/Bird/Rabbit): ").strip()
+                owner_id = input("Owner ID (e.g. O001): ").strip()
                 print("Added:", service.add_pet(name, ptype, owner_id))
             elif choice == "4":
                 for p in service.view_pets():
                     print(p, "owner=" + p.owner_id)
             elif choice == "5":
-                pet_id = input("Pet ID (e.g. P001): ")
-                date_time = input("Date/time (e.g. 2026-09-20 10:30): ")
-                reason = input("Reason: ")
+                pet_id = input("Pet ID (e.g. P001): ").strip()
+                date_time = input("Date/time (e.g. 2026-09-20 10:30): ").strip()
+                reason = input("Reason: ").strip()
                 print("Scheduled:", service.schedule_appointment(pet_id, date_time, reason))
             elif choice == "6":
                 for a in service.view_appointments():
                     print(a)
             elif choice == "7":
-                appt_id = input("Appointment ID (e.g. A001): ")
+                appt_id = input("Appointment ID (e.g. A001): ").strip()
                 print("Cancelled:", service.cancel_appointment(appt_id))
             elif choice == "8":
-                appt_id = input("Appointment ID: ")
-                status = input("Status (Scheduled/Completed/Cancelled): ")
+                appt_id = input("Appointment ID: ").strip()
+                status = input("Status (Scheduled/Completed/Cancelled): ").strip()
                 print("Updated:", service.update_status(appt_id, status))
             elif choice == "0":
                 print("Goodbye!")

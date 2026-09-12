@@ -7,6 +7,14 @@ class ClinicService:
     def __init__(self):
         self.db = ClinicDatabase.get_instance()
 
+    @staticmethod
+    def _normalize_id(raw_id, prefix):
+        s = str(raw_id).strip().upper()
+        num = s[len(prefix):].strip() if s.startswith(prefix) else s
+        if num.isdigit():
+            return prefix + str(int(num)).zfill(3)
+        return s
+
     def register_owner(self, name, contact_number):
         if name.strip() == "":
             raise ValueError("Name cannot be empty")
@@ -23,8 +31,10 @@ class ClinicService:
     def add_pet(self, name, pet_type, owner_id, age=0):
         if name.strip() == "":
             raise ValueError("Pet name cannot be empty")
+        owner_id = self._normalize_id(owner_id, "O")
         if owner_id not in self.db.owners:
             raise ValueError("Owner not found: " + owner_id)
+        pet_type = str(pet_type).strip()
         if pet_type.lower() not in ("dog", "cat", "bird", "rabbit"):
             raise ValueError("Unknown pet type: " + pet_type)
         pet_id = self.db.next_pet_id()
@@ -36,6 +46,7 @@ class ClinicService:
         return list(self.db.pets.values())
 
     def schedule_appointment(self, pet_id, date_time, reason=""):
+        pet_id = self._normalize_id(pet_id, "P")
         if pet_id not in self.db.pets:
             raise ValueError("Pet not found: " + pet_id)
         for a in self.db.appointments.values():
@@ -51,6 +62,7 @@ class ClinicService:
         return list(self.db.appointments.values())
 
     def cancel_appointment(self, appointment_id):
+        appointment_id = self._normalize_id(appointment_id, "A")
         if appointment_id not in self.db.appointments:
             raise ValueError("Appointment not found")
         appt = self.db.appointments[appointment_id]
@@ -59,6 +71,8 @@ class ClinicService:
         return appt
 
     def update_status(self, appointment_id, status):
+        appointment_id = self._normalize_id(appointment_id, "A")
+        status = str(status).strip().capitalize()
         if status not in ["Scheduled", "Completed", "Cancelled"]:
             raise ValueError("Bad status: " + status)
         if appointment_id not in self.db.appointments:

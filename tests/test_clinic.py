@@ -87,6 +87,18 @@ class TestClinic(unittest.TestCase):
         self.assertEqual(owner1.owner_id, "O001")
         self.assertEqual(owner2.owner_id, "O002")
 
+    def test_id_normalization(self):
+        owner = self.service.register_owner("Aly", "0969900000")
+        for trial in ["1", "0001", "O001", "o001", " O001 "]:
+            pet = self.service.add_pet("Theo", "Dog", trial)
+            self.assertEqual(pet.owner_id, owner.owner_id)
+        appt = self.service.schedule_appointment("1", "2026-09-20 10:30")
+        self.assertEqual(appt.pet_id, "P001")
+        self.assertEqual(self.service.cancel_appointment("1").status, "Cancelled")
+        self.assertEqual(
+            self.service.update_status("a001", "completed").status, "Completed"
+        )
+
     def test_persistence_across_restart(self):
         owner = self.service.register_owner("Persist", "0917-999")
         pet = self.service.add_pet("PersistPet", "Rabbit", owner.owner_id)
