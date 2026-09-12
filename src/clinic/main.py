@@ -1,4 +1,3 @@
-# Simple CLI demo for clinic staff.
 import sys
 sys.path.insert(0, "src")
 

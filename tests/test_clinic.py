@@ -1,4 +1,3 @@
-# Unit tests for the 5 required lab cases.
 import sys
 import os
 import unittest
@@ -10,19 +9,33 @@ from clinic.service import ClinicService
 
 
 class TestClinic(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._test_db = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "data", "data-test.db")
+        )
+        ClinicDatabase.configure(cls._test_db)
+
+    @classmethod
+    def tearDownClass(cls):
+        ClinicDatabase.reset_instance()
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            try:
+                os.remove(cls._test_db + suffix)
+            except FileNotFoundError:
+                pass
+        ClinicDatabase.configure(None)
+
     def setUp(self):
-        # Fresh database for each test (clear resets records + ID sequences)
         self.db = ClinicDatabase.get_instance()
         self.db.clear()
         self.service = ClinicService()
 
-    # 1. Register Pet Owner
     def test_register_pet_owner(self):
         owner = self.service.register_owner("Ana", "0917-111")
         self.assertEqual(owner.name, "Ana")
         self.assertEqual(len(self.service.view_owners()), 1)
 
-    # 2. Add Pet Record
     def test_add_pet_record(self):
         owner = self.service.register_owner("Ana", "0917-111")
         pet = self.service.add_pet("Bantay", "Dog", owner.owner_id)
@@ -47,7 +60,6 @@ class TestClinic(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.service.add_pet("   ", "Dog", owner.owner_id)
 
-    # 3. Schedule Appointment
     def test_schedule_appointment(self):
         owner = self.service.register_owner("Ana", "0917-111")
         pet = self.service.add_pet("Muning", "Cat", owner.owner_id)
@@ -55,7 +67,6 @@ class TestClinic(unittest.TestCase):
         self.assertEqual(appt.status, "Scheduled")
         self.assertEqual(len(self.service.view_appointments()), 1)
 
-    # 4. Cancel Appointment
     def test_cancel_appointment(self):
         owner = self.service.register_owner("Ana", "0917-111")
         pet = self.service.add_pet("Tweety", "Bird", owner.owner_id)
@@ -63,7 +74,6 @@ class TestClinic(unittest.TestCase):
         result = self.service.cancel_appointment(appt.appointment_id)
         self.assertEqual(result.status, "Cancelled")
 
-    # 5. Validate Singleton Instance
     def test_singleton_instance(self):
         db1 = ClinicDatabase.get_instance()
         db2 = ClinicDatabase()
@@ -76,6 +86,24 @@ class TestClinic(unittest.TestCase):
         self.assertNotEqual(owner1.owner_id, owner2.owner_id)
         self.assertEqual(owner1.owner_id, "O001")
         self.assertEqual(owner2.owner_id, "O002")
+
+    def test_persistence_across_restart(self):
+        owner = self.service.register_owner("Persist", "0917-999")
+        pet = self.service.add_pet("PersistPet", "Rabbit", owner.owner_id)
+        appt = self.service.schedule_appointment(
+            pet.pet_id, "2026-10-01 09:00", "Checkup"
+        )
+        ClinicDatabase.reset_instance()
+        fresh_service = ClinicService()
+        self.assertEqual(len(fresh_service.view_owners()), 1)
+        self.assertEqual(fresh_service.view_owners()[0].name, "Persist")
+        self.assertEqual(fresh_service.view_pets()[0].species, "Rabbit")
+        self.assertEqual(
+            fresh_service.view_appointments()[0].appointment_id,
+            appt.appointment_id,
+        )
+        nxt = fresh_service.register_owner("Next", "0917-000")
+        self.assertEqual(nxt.owner_id, "O002")
 
 
 if __name__ == "__main__":

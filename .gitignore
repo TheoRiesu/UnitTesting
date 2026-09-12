@@ -2,3 +2,6 @@ __pycache__/
 .vscode/
 .venv/
 venv/
+data/*.db
+data/*.db-wal
+data/*.db-shm

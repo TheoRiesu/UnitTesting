@@ -1,4 +1,3 @@
-# Factory: creates the right pet object by type name.
 from .models import Dog, Cat, Bird, Rabbit
 
 

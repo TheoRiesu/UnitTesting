@@ -1,5 +1,3 @@
-# Simple data classes for the vet clinic.
-
 class Owner:
     def __init__(self, owner_id, name, contact_number):
         self.owner_id = owner_id
@@ -53,7 +51,7 @@ class Appointment:
         self.owner_id = owner_id
         self.date_time = date_time
         self.reason = reason
-        self.status = "Scheduled"  # Scheduled, Completed, Cancelled
+        self.status = "Scheduled"
 
     def __str__(self):
         return (

@@ -32,6 +32,22 @@ python3 -m unittest discover -s tests -v
 python3 src/clinic/main.py
 ```
 
+## Data
+
+Persistent SQLite at `data/data.db` (auto-created, WAL mode:
+`PRAGMA journal_mode=WAL`). Tables: `owners`, `pets`,
+`appointments`, `counters` (ID sequences survive restarts).
+
+Inspect:
+
+```bash
+sqlite3 data/data.db "SELECT * FROM owners; SELECT * FROM pets;"
+sqlite3 data/data.db "PRAGMA journal_mode;"
+```
+
+Reset: delete `data/data.db*` or call `ClinicDatabase.get_instance().clear()`.
+Note: unit tests call `clear()`, so running tests wipes dev data.
+
 # License
 
 MIT License — see [LICENSE](./LICENSE) for details.

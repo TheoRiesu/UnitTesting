@@ -1,4 +1,3 @@
-# Simple service with all clinic actions.
 from .database import ClinicDatabase
 from .factory import PetFactory
 from .models import Owner, Appointment
@@ -8,7 +7,6 @@ class ClinicService:
     def __init__(self):
         self.db = ClinicDatabase.get_instance()
 
-    # 1. Pet Owner Management
     def register_owner(self, name, contact_number):
         if name.strip() == "":
             raise ValueError("Name cannot be empty")
@@ -16,13 +14,12 @@ class ClinicService:
             raise ValueError("Contact cannot be empty")
         owner_id = self.db.next_owner_id()
         owner = Owner(owner_id, name, contact_number)
-        self.db.owners[owner_id] = owner
+        self.db.save_owner(owner)
         return owner
 
     def view_owners(self):
         return list(self.db.owners.values())
 
-    # 2. Pet Management
     def add_pet(self, name, pet_type, owner_id, age=0):
         if name.strip() == "":
             raise ValueError("Pet name cannot be empty")
@@ -32,24 +29,22 @@ class ClinicService:
             raise ValueError("Unknown pet type: " + pet_type)
         pet_id = self.db.next_pet_id()
         pet = PetFactory.create_pet(pet_type, pet_id, name, owner_id, age)
-        self.db.pets[pet_id] = pet
+        self.db.save_pet(pet)
         return pet
 
     def view_pets(self):
         return list(self.db.pets.values())
 
-    # 3. Appointment Management
     def schedule_appointment(self, pet_id, date_time, reason=""):
         if pet_id not in self.db.pets:
             raise ValueError("Pet not found: " + pet_id)
-        # Avoid double booking same pet + same time
         for a in self.db.appointments.values():
             if a.pet_id == pet_id and a.date_time == date_time and a.status == "Scheduled":
                 raise ValueError("Pet already booked at that time")
         appointment_id = self.db.next_appointment_id()
         pet = self.db.pets[pet_id]
         appt = Appointment(appointment_id, pet_id, pet.owner_id, date_time, reason)
-        self.db.appointments[appointment_id] = appt
+        self.db.save_appointment(appt)
         return appt
 
     def view_appointments(self):
@@ -60,6 +55,7 @@ class ClinicService:
             raise ValueError("Appointment not found")
         appt = self.db.appointments[appointment_id]
         appt.status = "Cancelled"
+        self.db.save_appointment(appt)
         return appt
 
     def update_status(self, appointment_id, status):
@@ -69,4 +65,5 @@ class ClinicService:
             raise ValueError("Appointment not found")
         appt = self.db.appointments[appointment_id]
         appt.status = status
+        self.db.save_appointment(appt)
         return appt
