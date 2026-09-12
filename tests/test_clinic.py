@@ -11,13 +11,10 @@ from clinic.service import ClinicService
 
 class TestClinic(unittest.TestCase):
     def setUp(self):
-        # Fresh database for each test
+        # Fresh database for each test (clear resets records + ID sequences)
         self.db = ClinicDatabase.get_instance()
         self.db.clear()
         self.service = ClinicService()
-        self.service.owner_count = 0
-        self.service.pet_count = 0
-        self.service.appointment_count = 0
 
     # 1. Register Pet Owner
     def test_register_pet_owner(self):
@@ -31,6 +28,24 @@ class TestClinic(unittest.TestCase):
         pet = self.service.add_pet("Bantay", "Dog", owner.owner_id)
         self.assertEqual(pet.species, "Dog")
         self.assertEqual(pet.owner_id, owner.owner_id)
+
+    def test_add_all_pet_types(self):
+        owner = self.service.register_owner("Ana", "0917-111")
+        for pet_type in ["Dog", "Cat", "Bird", "Rabbit"]:
+            pet = self.service.add_pet("Pet-" + pet_type, pet_type, owner.owner_id)
+            self.assertEqual(pet.species, pet_type)
+            self.assertEqual(pet.owner_id, owner.owner_id)
+        self.assertEqual(len(self.service.view_pets()), 4)
+
+    def test_add_pet_invalid_type(self):
+        owner = self.service.register_owner("Ana", "0917-111")
+        with self.assertRaises(ValueError):
+            self.service.add_pet("Fishy", "Fish", owner.owner_id)
+
+    def test_add_pet_empty_name(self):
+        owner = self.service.register_owner("Ana", "0917-111")
+        with self.assertRaises(ValueError):
+            self.service.add_pet("   ", "Dog", owner.owner_id)
 
     # 3. Schedule Appointment
     def test_schedule_appointment(self):
@@ -53,6 +68,14 @@ class TestClinic(unittest.TestCase):
         db1 = ClinicDatabase.get_instance()
         db2 = ClinicDatabase()
         self.assertIs(db1, db2)
+
+    def test_shared_id_sequence(self):
+        other_service = ClinicService()
+        owner1 = self.service.register_owner("Ana", "0917-111")
+        owner2 = other_service.register_owner("Ben", "0917-222")
+        self.assertNotEqual(owner1.owner_id, owner2.owner_id)
+        self.assertEqual(owner1.owner_id, "O001")
+        self.assertEqual(owner2.owner_id, "O002")
 
 
 if __name__ == "__main__":
